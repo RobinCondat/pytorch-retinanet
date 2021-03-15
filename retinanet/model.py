@@ -209,6 +209,7 @@ class ClassificationModel(nn.Module):
 
         self.conv4 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
         self.act4 = nn.ReLU()
+
         if self.dataset is None:
             self.output = nn.Conv2d(feature_size, num_anchors * num_classes, kernel_size=3, padding=1)
             self.output_act = nn.Sigmoid()
@@ -234,7 +235,7 @@ class ClassificationModel(nn.Module):
             out = self.output_act(out)
         else:
             out = getattr(self,'output_{}'.format(self.dataset))(out)
-            out = getattr(self,'output_act_{}'.format(self.dataset)(out)
+            out = getattr(self,'output_act_{}'.format(self.dataset))(out)
         # out is B x C x W x H, with C = n_classes + n_anchors
         out1 = out.permute(0, 2, 3, 1)
 
@@ -254,7 +255,7 @@ class ResNet(nn.Module):
             self.ignore_index = num_classes
         else:
             self.ignore_index = None
-        
+        self.dataset = dataset
         self.evaluate=evaluate
         self.inplanes = 64
         super(ResNet, self).__init__()
@@ -298,13 +299,15 @@ class ResNet(nn.Module):
                 m.bias.data.zero_()
 
         prior = 0.01
-
-        self.classificationModel.output.weight.data.fill_(0)
-        self.classificationModel.output.bias.data.fill_(-math.log((1.0 - prior) / prior))
-
+        if self.dataset is None:
+          self.classificationModel.output.weight.data.fill_(0)
+          self.classificationModel.output.bias.data.fill_(-math.log((1.0 - prior) / prior))
+        else:
+          with torch.no_grad():
+            getattr(self.classificationModel,'output_{}'.format(self.dataset)).weight.data.fill_(0)
+            getattr(self.classificationModel,'output_{}'.format(self.dataset)).bias.data.fill_(-math.log((1.0 - prior) / prior))
         self.regressionModel.output.weight.data.fill_(0)
         self.regressionModel.output.bias.data.fill_(0)
-
         self.freeze_bn()
 
     def _make_layer(self, block, planes, blocks, stride=1):
@@ -455,14 +458,14 @@ def resnet152(num_classes, pretrained=False, color_mode='RGB', fusion_type=0, st
 
 class Double_ResNet(nn.Module):
 
-    def __init__(self, num_classes, block, layers, color_mode, fusion_type, step, evaluate = False, ignore_class=False):
-
+    def __init__(self, num_classes, block, layers, color_mode, fusion_type, step, evaluate = False, ignore_class=False,dataset=None):
+        
         if ignore_class:
             num_classes -= 1
             self.ignore_index = num_classes
         else:
             self.ignore_index = None
-
+        self.dataset = dataset
         self.evaluate=evaluate
         self.fusion_type = fusion_type
         self.inplanes = [64,64]
@@ -547,7 +550,7 @@ class Double_ResNet(nn.Module):
             
             
         self.regressionModel = RegressionModel(256)
-        self.classificationModel = ClassificationModel(256, num_classes=num_classes)
+        self.classificationModel = ClassificationModel(256, num_classes=num_classes,dataset=dataset)
 
         self.anchors = Anchors()
 
@@ -567,8 +570,13 @@ class Double_ResNet(nn.Module):
 
         prior = 0.01
 
-        self.classificationModel.output.weight.data.fill_(0)
-        self.classificationModel.output.bias.data.fill_(-math.log((1.0 - prior) / prior))
+        if self.dataset is None:
+          self.classificationModel.output.weight.data.fill_(0)
+          self.classificationModel.output.bias.data.fill_(-math.log((1.0 - prior) / prior))
+        else:
+          with torch.no_grad():
+            getattr(self.classificationModel,'output_{}'.format(self.dataset)).weight.data.fill_(0)
+            getattr(self.classificationModel,'output_{}'.format(self.dataset)).bias.data.fill_(-math.log((1.0 - prior) / prior))
 
         self.regressionModel.output.weight.data.fill_(0)
         self.regressionModel.output.bias.data.fill_(0)
