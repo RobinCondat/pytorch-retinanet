@@ -42,7 +42,7 @@ class Config:
         self.transform = args.data_aug
         self.ignore_class = bool(args.ignore)
         self.classes = args.classes
-        self.dataset = args.datasets
+        self.dataset = None
         self.data_prefixes = PREFIXES[args.datasets]
 
         if (self.fusion_type == 0) and (self.color_mode in ['RGB','DOL']):
