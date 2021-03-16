@@ -77,9 +77,9 @@ class Config:
             self.flip_x_chance=0
             self.flip_y_chance=0
         if self.classes == 'PED':
-            self.csv_classes = "/save/2017018/rconda01/classes_ped.csv"
+            self.csv_classes = self.base_path+"classes_ped.csv"
         else:
-            self.csv_classes = "/save/2017018/rconda01/classes_full_{}.csv".format(args.datasets)
+            self.csv_classes = self.base_path+"classes_full_{}.csv".format(args.datasets)
         
         self.nb_channels = NB_CHANNELS[self.color_mode]
 
@@ -100,9 +100,7 @@ class Config:
         self.best_model_path = self.home_dir+'models//'+self.family+'//'+self.ID+'_bestModel.pt'
 
         os.makedirs(self.home_dir+'models//'+self.family+'//',exist_ok=True)
-        
-        self.image_path = self.base_path+'training//' 
-        
+              
         self.repartition_path = self.home_dir+'repartitions//'+str(self.k_fold_cross_validation)+'_fold_cross_validation//'
         
         self.result_images_path = self.home_dir+'results_images//'+self.family+'//'+self.ID+'//'
