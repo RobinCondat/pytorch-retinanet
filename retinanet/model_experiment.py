@@ -6,6 +6,7 @@ from torchvision.ops import nms
 from retinanet.utils import BasicBlock, Bottleneck, BBoxTransform, ClipBoxes
 from retinanet.anchors import Anchors
 from retinanet import new_losses as losses
+import numpy as np
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -312,6 +313,12 @@ class ResNet(nn.Module):
         regression = torch.cat([self.regressionModel(feature) for feature in features], dim=1)
 
         classification = torch.cat([self.classificationModel(feature) for feature in features], dim=1)
+
+        #TMP
+        classification = torch.Tensor(np.zeros((1,181089,8),dtype=np.float32)).cuda()
+        regression = torch.Tensor(np.zeros((1,181089,4),dtype=np.float32)).cuda()
+
+        classification[0,10000,0]=1
 
         anchors = self.anchors(img_batch)
         

@@ -28,7 +28,7 @@ from retinanet.config_experiment import Config
 import time
 import progressbar
 
-from retinanet import new_losses as losses
+from retinanet import losses #new_losses as losses
 
 assert torch.__version__.split('.')[0] == '1'
 
@@ -177,10 +177,10 @@ def main(args=None):
                 if torch.cuda.is_available():
                     data['img'] = data['img'].cuda().float()
             optimizer.zero_grad()
-            #print(data['annot'])
+            print(data['annot'])
             classification, regression, anchors, annotations, results = retinanet([data['img'], data['annot']])
             scores, labels, boxes = results
-      
+
             a,b = focalLoss(classification, regression, anchors, annotations, ignore_index = 8)
             print(a)
             print(b)
@@ -195,7 +195,7 @@ def main(args=None):
               annot = data['annot'][0,i,:].cpu().numpy()
               x,y,h,w = annot[:4]
               classe = classes[int(annot[4])]
-              cv2.rectangle(output,(x,y),(h,w),colors[classe],1)
+              cv2.rectangle(output,(x,y),(h,w),colors[classe],2)
             plt.figure(figsize=(20,20))
             plt.imshow(output)
             plt.title("Ground Truth")
@@ -224,9 +224,16 @@ def main(args=None):
                 image_boxes = None
                 image_scores = None
                 image_labels = None
-            print(image_boxes)
-            print(image_scores)
-            print(image_labels)
+            output_2 = img.copy()
+            for i in range(len(image_scores)):
+              x,y,h,w = image_boxes[i,:]
+              score = image_scores[i]
+              classe = classes[image_labels[i]]
+              cv2.rectangle(output_2,(x,y),(h,w),colors[classe],2)
+            plt.figure(figsize=(20,20))
+            plt.imshow(output_2)
+            plt.title("Ground Truth")
+            plt.show()
             break
 
     
