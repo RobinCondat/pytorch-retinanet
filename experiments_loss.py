@@ -106,6 +106,7 @@ def main(args=None):
     
     if C.transfer_learning and C.backbone == 'resnet50':
         for weights in C.weights:
+            print(os.path.exists(weights))
             retinanet.load_state_dict(torch.load(weights),strict=False)
 
     use_gpu = True
