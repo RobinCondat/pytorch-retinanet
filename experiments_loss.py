@@ -21,7 +21,8 @@ from torch.utils.tensorboard import SummaryWriter
 import os
 import csv
 from retinanet.csvLogger import CSVLogger
-
+from matplotlib import pyplot as plt 
+import cv2
 from retinanet.config_experiment import Config
 
 import time
@@ -151,6 +152,16 @@ def main(args=None):
     reg_losses = {k:[] for k in phases}
     
     focalLoss = losses.FocalLoss()
+    classes = ["Car","Truck","Pedestrian","Bike","Bus","Rider","Train","Motorcycle","DontCare"]
+    colors = {"Car":(0,255,0),
+              "Truck":(255,0,0),
+              "Pedestrian":(0,0,255),
+              "Bike":(255,255,0),
+              "Bus":(0,255,255),
+              "Rider":(255,0,255),
+              "Train":(60,60,60),
+              "Motorcycle":(255,255,255),
+              "DontCare":(0,0,0)}
 
     for phase in phases:
         print("")
@@ -166,10 +177,28 @@ def main(args=None):
                 if torch.cuda.is_available():
                     data['img'] = data['img'].cuda().float()
             optimizer.zero_grad()
+            print(data['annot'])
             classification, regression, anchors, annotations = retinanet([data['img'], data['annot']])
             a,b = focalLoss(classification, regression, anchors, annotations, ignore_index = 8)
             print(a)
             print(b)
+
+            # Imshow img with annotations
+            mean = np.array([[[0.485, 0.456, 0.406]]])
+            std = np.array([[[0.229, 0.224, 0.225]]])
+            img = data['img'][0,:,:,:].permute(1,2,0).cpu().numpy()
+            img = ((img*std+mean)*255).astype(np.uint8)
+            output = img.copy()
+            for i in range(data["annot"].shape[1]):
+              annot = data['annot'][0,i,:].cpu().numpy()
+              x,y,h,w = annot[:4]
+              classe = classes[int(annot[4])]
+              cv2.rectangle(output,(x,y),(h,w),colors[classe],1)
+            plt.figure(figsize=(20,20))
+            plt.imshow(output)
+            plt.title("Ground Truth")
+            plt.show()
+
             break
 
     
