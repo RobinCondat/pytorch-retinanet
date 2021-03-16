@@ -209,7 +209,6 @@ class ClassificationModel(nn.Module):
 class ResNet(nn.Module):
 
     def __init__(self, num_classes, block, layers, evaluate=False,ignore_class=False,dataset=None):
-        
         if ignore_class:
             num_classes -= 1
             self.ignore_index = num_classes
@@ -293,7 +292,6 @@ class ResNet(nn.Module):
                 layer.eval()
 
     def forward(self, inputs):
-
         if not self.evaluate:
             img_batch, annotations = inputs
         else:
@@ -323,11 +321,7 @@ class ResNet(nn.Module):
         scores = torch.max(classification, dim=2, keepdim=True)[0]
 
         scores_over_thresh = (scores > 0.05)[0, :, 0]
-        """
-        if scores_over_thresh.sum() == 0:
-            # no boxes to NMS, just return
-            return [torch.zeros(0), torch.zeros(0), torch.zeros(0, 4)]
-        
+               
         classification_2 = classification[:, scores_over_thresh, :]
         
         transformed_anchors = transformed_anchors[:, scores_over_thresh, :]
@@ -336,9 +330,8 @@ class ResNet(nn.Module):
         anchors_nms_idx = nms(transformed_anchors[0,:,:], scores[0,:,0], 0.5)
 
         nms_scores, nms_class = classification_2[0, anchors_nms_idx, :].max(dim=1)
-        """
-        #return [nms_scores, nms_class, transformed_anchors[0, anchors_nms_idx, :]]
-        return classification, regression, anchors, annotations
+        
+        return classification, regression, anchors, annotations, (nms_scores, nms_class, transformed_anchors[0, anchors_nms_idx, :])
 
 def resnet18(num_classes, pretrained=False, color_mode='RGB', fusion_type=0, step=1, **kwargs):
     """Constructs a ResNet-18 model.

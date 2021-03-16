@@ -177,8 +177,10 @@ def main(args=None):
                 if torch.cuda.is_available():
                     data['img'] = data['img'].cuda().float()
             optimizer.zero_grad()
-            print(data['annot'])
-            classification, regression, anchors, annotations = retinanet([data['img'], data['annot']])
+            #print(data['annot'])
+            classification, regression, anchors, annotations, results = retinanet([data['img'], data['annot']])
+            scores, labels, boxes = results
+      
             a,b = focalLoss(classification, regression, anchors, annotations, ignore_index = 8)
             print(a)
             print(b)
@@ -199,6 +201,32 @@ def main(args=None):
             plt.title("Ground Truth")
             plt.show()
 
+            scores = scores.cpu().detach().numpy()
+            labels = labels.cpu().detach().numpy()
+            boxes  = boxes.cpu().detach().numpy()
+
+            # correct boxes for image scale
+            boxes /= data['scale']      
+            # select indices which have a score above the threshold
+            indices = np.where(scores > 0.05)[0]
+            if indices.shape[0] > 0:
+                # select those scores
+                scores = scores[indices]
+
+                # find the order with which to sort the scores
+                scores_sort = np.argsort(-scores)[:100]
+
+                # select detections
+                image_boxes      = boxes[indices[scores_sort], :]
+                image_scores     = scores[scores_sort]
+                image_labels     = labels[indices[scores_sort]]
+            else:
+                image_boxes = None
+                image_scores = None
+                image_labels = None
+            print(image_boxes)
+            print(image_scores)
+            print(image_labels)
             break
 
     
