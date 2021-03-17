@@ -28,8 +28,8 @@ from retinanet.config_experiment import Config
 import time
 import progressbar
 
-from retinanet import losses
-from retinanet import new_losses
+from retinanet import losses_ignore_with_IoU as losses
+from retinanet import losses as new_losses
 
 assert torch.__version__.split('.')[0] == '1'
 
