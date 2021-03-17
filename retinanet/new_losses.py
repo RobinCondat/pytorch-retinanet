@@ -50,6 +50,7 @@ class FocalLoss(nn.Module):
         regression_losses = []
 
         anchor = anchors[0, :, :]
+        num_anchors = anchor.shape[0]
 
         anchor_widths  = anchor[:, 2] - anchor[:, 0]
         anchor_heights = anchor[:, 3] - anchor[:, 1]
@@ -149,7 +150,7 @@ class FocalLoss(nn.Module):
                     ignore_indices = torch.ge(IoA_max, 0.5)
                     #print("Ignore indices : {}".format(ignore_indices.shape))
                 else:
-                    ignore_indices = None
+                    ignore_indices = (torch.ones((num_anchors)) * 0).type(torch.ByteTensor)
                     #print("Ignore indices : {}".format(ignore_indices))
             if IoU_max is not None:
                 positive_indices = torch.ge(IoU_max, 0.5)
@@ -157,9 +158,9 @@ class FocalLoss(nn.Module):
                 #print("Positive indices : {}".format(positive_indices.shape))
             
             else:
-                positives_indices = None
+                positive_indices = (torch.ones((num_anchors)) * 0).type(torch.ByteTensor)
                 num_positive_anchors = torch.tensor(0)
-                #print("Positive indices : {}".format(positive_indices))
+                #print("Positive indices : {}".format(positive_indices.shape))
 
             if ignore_index is not None:
                 if ignore_indices is not None:
@@ -191,7 +192,7 @@ class FocalLoss(nn.Module):
                 cls_loss = torch.where(torch.ne(targets, -1.0), cls_loss, torch.zeros(cls_loss.shape).cuda())
             else:
                 cls_loss = torch.where(torch.ne(targets, -1.0), cls_loss, torch.zeros(cls_loss.shape))
-
+            print(torch.ne(targets, -1.0).nonzero(as_tuple=True)[0].shape)
             classification_losses.append(cls_loss.sum()/torch.clamp(num_positive_anchors.float(), min=1.0))
    
             # compute the loss for regression

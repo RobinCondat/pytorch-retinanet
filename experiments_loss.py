@@ -28,7 +28,8 @@ from retinanet.config_experiment import Config
 import time
 import progressbar
 
-from retinanet import losses #new_losses as losses
+from retinanet import losses
+from retinanet import new_losses
 
 assert torch.__version__.split('.')[0] == '1'
 
@@ -152,6 +153,7 @@ def main(args=None):
     reg_losses = {k:[] for k in phases}
     
     focalLoss = losses.FocalLoss()
+    focalLoss2 = new_losses.FocalLoss()
     classes = ["Car","Truck","Pedestrian","Bike","Bus","Rider","Train","Motorcycle","DontCare"]
     colors = {"Car":(0,255,0),
               "Truck":(255,0,0),
@@ -177,13 +179,10 @@ def main(args=None):
                 if torch.cuda.is_available():
                     data['img'] = data['img'].cuda().float()
             optimizer.zero_grad()
-            print(data['annot'])
+            data['annot'] = torch.Tensor([[[0.0000,0.0000,1280.0000,720.0000,8.0]]]).cuda()
             classification, regression, anchors, annotations, results = retinanet([data['img'], data['annot']])
+            
             scores, labels, boxes = results
-
-            a,b = focalLoss(classification, regression, anchors, annotations, ignore_index = 8)
-            print(a)
-            print(b)
 
             # Imshow img with annotations
             mean = np.array([[[0.485, 0.456, 0.406]]])
@@ -199,7 +198,7 @@ def main(args=None):
             plt.figure(figsize=(20,20))
             plt.imshow(output)
             plt.title("Ground Truth")
-            plt.show()
+            plt.show();
 
             scores = scores.cpu().detach().numpy()
             labels = labels.cpu().detach().numpy()
@@ -233,7 +232,70 @@ def main(args=None):
             plt.figure(figsize=(20,20))
             plt.imshow(output_2)
             plt.title("Ground Truth")
-            plt.show()
+            plt.show();
+            print(x,y,h,w)
+            print(score)
+            print(classe)
+            
+            print("Test 1 : Prédiction parfaite (Car en GT aux mêmes coordonnées que la prédiction)")
+            print("Loss Ignore IoU")
+            annot_1 = torch.Tensor([[[991.4912,37.74562,1048.5088,66.25438,0.0]]]).cuda()
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, ignore_index = 8)
+            print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
+
+            print("Loss Ignore IoA")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, ignore_index = 8)
+            print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
+
+            print("Test 2 : Prédiction fausse (Pedestrian en GT aux mêmes coordonnées que la prédiction)")
+            print("Loss Ignore IoU")
+            annot_2 = torch.Tensor([[[991.4912,37.74562,1048.5088,66.25438,2.0]]]).cuda()
+            class_2_IoU,reg_2_IoU = focalLoss(classification, regression, anchors, annot_2, ignore_index = 8)
+            print("Class loss : {}".format(class_2_IoU.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_2_IoU.cpu().numpy()[0]))
+
+            print("Loss Ignore IoA")
+            class_2_IoA,reg_2_IoA = focalLoss2(classification, regression, anchors, annot_2, ignore_index = 8)
+            print("Class loss : {}".format(class_2_IoA.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_2_IoA.cpu().numpy()[0]))
+
+            print("Test 3 : Prédiction sur DontCare (DontCare en GT aux mêmes coordonnées que la prédiction)")
+            print("Loss Ignore IoU")
+            annot_3 = torch.Tensor([[[991.4912,37.74562,1048.5088,66.25438,8.0]]]).cuda()
+            class_3_IoU,reg_3_IoU = focalLoss(classification, regression, anchors, annot_3, ignore_index = 8)
+            print("Class loss : {}".format(class_3_IoU.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_3_IoU.cpu().numpy()[0]))
+
+            print("Loss Ignore IoA")
+            class_3_IoA,reg_3_IoA = focalLoss2(classification, regression, anchors, annot_3, ignore_index = 8)
+            print("Class loss : {}".format(class_3_IoA.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_3_IoA.cpu().numpy()[0]))
+
+            print("Test 4 : Prédiction dans DontCare (DontCare en GT qui inclut la prédiction)")
+            print("Loss Ignore IoU")
+            annot_4 = torch.Tensor([[[900.0000,25.0000,1200.0000,75.0000,8.0]]]).cuda()
+            class_4_IoU,reg_4_IoU = focalLoss(classification, regression, anchors, annot_4, ignore_index = 8)
+            print("Class loss : {}".format(class_4_IoU.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_4_IoU.cpu().numpy()[0]))
+
+            print("Loss Ignore IoA")
+            class_4_IoA,reg_4_IoA = focalLoss2(classification, regression, anchors, annot_4, ignore_index = 8)
+            print("Class loss : {}".format(class_4_IoA.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_4_IoA.cpu().numpy()[0]))
+
+            print("Test 5 : Prédiction dans DontCare img (DontCare sur toute l'image en GT qui inclut la prédiction)")
+            print("Loss Ignore IoU")
+            annot_4 = torch.Tensor([[[0.0000,0.0000,1280.0000,720.0000,8.0]]]).cuda()
+            class_4_IoU,reg_4_IoU = focalLoss(classification, regression, anchors, annot_4, ignore_index = 8)
+            print("Class loss : {}".format(class_4_IoU.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_4_IoU.cpu().numpy()[0]))
+
+            print("Loss Ignore IoA")
+            class_4_IoA,reg_4_IoA = focalLoss2(classification, regression, anchors, annot_4, ignore_index = 8)
+            print("Class loss : {}".format(class_4_IoA.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_4_IoA.cpu().numpy()[0]))
             break
 
     

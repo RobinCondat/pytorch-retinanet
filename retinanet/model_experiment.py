@@ -317,8 +317,8 @@ class ResNet(nn.Module):
         #TMP
         classification = torch.Tensor(np.zeros((1,181089,8),dtype=np.float32)).cuda()
         regression = torch.Tensor(np.zeros((1,181089,4),dtype=np.float32)).cuda()
-
-        classification[0,10000,0]=1
+        for i in [10000]: #[ 8524,  8528,  9982,  9990,  9991,  9992,  9993,  9994,  9999, 10000, 10001, 10002, 10003, 10004, 10008, 10009, 10010, 10011, 10012, 10018, 11476, 11480]:
+          classification[0,i,0]=1
 
         anchors = self.anchors(img_batch)
         
