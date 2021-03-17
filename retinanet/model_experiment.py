@@ -5,7 +5,7 @@ import torch.utils.model_zoo as model_zoo
 from torchvision.ops import nms
 from retinanet.utils import BasicBlock, Bottleneck, BBoxTransform, ClipBoxes
 from retinanet.anchors import Anchors
-from retinanet import new_losses as losses
+from retinanet import losses
 import numpy as np
 
 model_urls = {
