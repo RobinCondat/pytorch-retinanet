@@ -315,11 +315,12 @@ class ResNet(nn.Module):
         classification = torch.cat([self.classificationModel(feature) for feature in features], dim=1)
 
         #TMP
-        classification = torch.Tensor(np.zeros((1,181089,8),dtype=np.float32)).cuda()
-        regression = torch.Tensor(np.zeros((1,181089,4),dtype=np.float32)).cuda()
+        classification = torch.zeros(classification.shape).cuda()
+        regression = torch.zeros(regression.shape).cuda()
         for i in [20000]: #[ 8524,  8528,  9982,  9990,  9991,  9992,  9993,  9994,  9999, 10000, 10001, 10002, 10003, 10004, 10008, 10009, 10010, 10011, 10012, 10018, 11476, 11480]:
           classification[0,i,0]=1
-
+        print(classification.shape)
+        print(regression.shape)
         anchors = self.anchors(img_batch)
         
         transformed_anchors = self.regressBoxes(anchors, regression)

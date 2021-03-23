@@ -111,7 +111,7 @@ class Config:
         if self.classes == 'PED':
             self.simple_label_file = self.base_path+'training_labels_ped.txt'
         else:
-            self.simple_label_file = self.base_path+'training_labels_full.txt'
+            self.simple_label_file = self.base_path+'training_labels_full_2.txt'
         
         self.simple_label_test_file = self.base_path+'testing_labels.txt'
        
@@ -140,7 +140,7 @@ class Config:
                 if args.weights == None or args.weights == 'None':
                     self.weights=[self.home_dir+'models/coco.pt']
                 else:
-                    self.weights=[self.best_model_path.replace(self.ID,args.weights)] #[self.home_dir+'models/{}_k{}.pt'.format(color_mode,self.k_config) for color_mode in ['RGB','DOL']]
+                    self.weights=[args.weights] #[self.home_dir+'models/{}_k{}.pt'.format(color_mode,self.k_config) for color_mode in ['RGB','DOL']]
 
 def parser_args(args):
 

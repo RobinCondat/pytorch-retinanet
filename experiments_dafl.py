@@ -195,6 +195,7 @@ def main(args=None):
               x,y,h,w = annot[:4]
               classe = classes[int(annot[4])]
               cv2.rectangle(output,(x,y),(h,w),colors[classe],2)
+            print("Dataset : {}".format(data['dataset']))
             plt.figure(figsize=(20,20))
             plt.imshow(output)
             plt.title("Ground Truth")
@@ -236,7 +237,7 @@ def main(args=None):
             print(x,y,h,w)
             print(score)
             print(classe)
-            
+            """
             print("Test 1 : Prédiction parfaite (Car en GT aux mêmes coordonnées que la prédiction)")
             print("Loss Ignore IoU")
             annot_1 = torch.Tensor([[[991.4912,37.74562,1048.5088,66.25438,0.0]]]).cuda()
@@ -248,6 +249,7 @@ def main(args=None):
             class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, ignore_index = 8)
             print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
             print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
+            """
 
     
 
