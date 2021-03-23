@@ -317,29 +317,8 @@ class ResNet(nn.Module):
         #TMP
         classification = torch.zeros(classification.shape).cuda()
         regression = torch.zeros(regression.shape).cuda()
-        for i in [20000]: #[ 8524,  8528,  9982,  9990,  9991,  9992,  9993,  9994,  9999, 10000, 10001, 10002, 10003, 10004, 10008, 10009, 10010, 10011, 10012, 10018, 11476, 11480]:
-          classification[0,i,0]=1
-        print(classification.shape)
-        print(regression.shape)
         anchors = self.anchors(img_batch)
-        
-        transformed_anchors = self.regressBoxes(anchors, regression)
-        transformed_anchors = self.clipBoxes(transformed_anchors, img_batch)
-
-        scores = torch.max(classification, dim=2, keepdim=True)[0]
-
-        scores_over_thresh = (scores > 0.05)[0, :, 0]
-               
-        classification_2 = classification[:, scores_over_thresh, :]
-        
-        transformed_anchors = transformed_anchors[:, scores_over_thresh, :]
-        scores = scores[:, scores_over_thresh, :]
-
-        anchors_nms_idx = nms(transformed_anchors[0,:,:], scores[0,:,0], 0.5)
-
-        nms_scores, nms_class = classification_2[0, anchors_nms_idx, :].max(dim=1)
-        
-        return classification, regression, anchors, annotations, (nms_scores, nms_class, transformed_anchors[0, anchors_nms_idx, :])
+        return classification, regression, anchors, annotations
 
 def resnet18(num_classes, pretrained=False, color_mode='RGB', fusion_type=0, step=1, **kwargs):
     """Constructs a ResNet-18 model.

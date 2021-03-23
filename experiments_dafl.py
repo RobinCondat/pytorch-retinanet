@@ -32,7 +32,8 @@ from retinanet import losses
 from retinanet import losses_dafl as new_losses
 
 assert torch.__version__.split('.')[0] == '1'
-
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
 print('CUDA available: {}'.format(torch.cuda.is_available()))
 
 def separate_for_all(data):
@@ -180,79 +181,162 @@ def main(args=None):
                     data['img'] = data['img'].cuda().float()
             optimizer.zero_grad()
             data['annot'] = torch.Tensor([[[0.0000,0.0000,1280.0000,720.0000,8.0]]]).cuda()
-            classification, regression, anchors, annotations, results = retinanet([data['img'], data['annot']])
+            classification, regression, anchors, annotations = retinanet([data['img'], data['annot']])
             
-            scores, labels, boxes = results
-
-            # Imshow img with annotations
-            mean = np.array([[[0.485, 0.456, 0.406]]])
-            std = np.array([[[0.229, 0.224, 0.225]]])
-            img = data['img'][0,:,:,:].permute(1,2,0).cpu().numpy()
-            img = ((img*std+mean)*255).astype(np.uint8)
-            output = img.copy()
-            for i in range(data["annot"].shape[1]):
-              annot = data['annot'][0,i,:].cpu().numpy()
-              x,y,h,w = annot[:4]
-              classe = classes[int(annot[4])]
-              cv2.rectangle(output,(x,y),(h,w),colors[classe],2)
-            print("Dataset : {}".format(data['dataset']))
-            plt.figure(figsize=(20,20))
-            plt.imshow(output)
-            plt.title("Ground Truth")
-            plt.show();
-
-            scores = scores.cpu().detach().numpy()
-            labels = labels.cpu().detach().numpy()
-            boxes  = boxes.cpu().detach().numpy()
-
-            # correct boxes for image scale
-            boxes /= data['scale']      
-            # select indices which have a score above the threshold
-            indices = np.where(scores > 0.05)[0]
-            if indices.shape[0] > 0:
-                # select those scores
-                scores = scores[indices]
-
-                # find the order with which to sort the scores
-                scores_sort = np.argsort(-scores)[:100]
-
-                # select detections
-                image_boxes      = boxes[indices[scores_sort], :]
-                image_scores     = scores[scores_sort]
-                image_labels     = labels[indices[scores_sort]]
+            if data['dataset']=='BDD':
+              true_indexes = [ 8524,  8528,  9982,  9990,  9991,  9992,  9993,  9994,  9999, 10000, 10001, 10002, 10003, 10004, 10008, 10009, 10010, 10011, 10012, 10018, 11476, 11480]
             else:
-                image_boxes = None
-                image_scores = None
-                image_labels = None
-            output_2 = img.copy()
-            for i in range(len(image_scores)):
-              x,y,h,w = image_boxes[i,:]
-              score = image_scores[i]
-              classe = classes[image_labels[i]]
-              cv2.rectangle(output_2,(x,y),(h,w),colors[classe],2)
-            plt.figure(figsize=(20,20))
-            plt.imshow(output_2)
-            plt.title("Ground Truth")
-            plt.show();
-            """
-            print(x,y,h,w)
-            print(score)
-            print(classe)
-            """
-            print("Test 1 : Prédiction parfaite (Car en GT aux mêmes coordonnées que la prédiction)")
-            print("Loss Ignore IoU")
-            annot_1 = torch.Tensor([[[991.4912,37.74562,1048.5088,66.25438,0.0]]]).cuda()
-            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, ignore_index = 8)
-            #print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
-            #print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
+              true_indexes = [7264,7268,8470,8478,8479,8480,8481,8482,8487,8488,8489,8490,8491,8492,8496,8497,8498,8499,8500,8506,9712,9716]
 
-            print("Loss Ignore IoA")
-            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 8)
-            #print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
-            #print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
+
+
+
+            print('\nDataset : {}'.format(data['dataset']))
             
 
-    
 
+
+            print("\nTest 1 : Prédiction parfaite (Pedestrian en GT aux mêmes coordonnées que la prédiction)")
+            
+            annot_1 = torch.Tensor([[[991.4912,37.74562,1048.5088,66.25438,7.0]]]).cuda()
+            for i in true_indexes:
+              classification[0,i,7] = 1
+
+            print("Without DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
+
+            print("With DAFL")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
+            
+
+
+
+            print("\nTest 2 : Prédiction fausse (Car/Cyclist en GT aux mêmes coordonnées que la prédiction Ped)")
+            
+            annot_1 = torch.Tensor([[[991.4912,37.74562,1048.5088,66.25438,7.0]]]).cuda()
+            classification = classification*0
+            if data['dataset']=='BDD':
+              cls = 0
+            else:
+              cls = 10
+            for i in true_indexes:
+              classification[0,i,cls] = 1
+
+                                      
+            print("Without DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
+
+            print("With DAFL")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
+
+
+
+            print("\nTest 3 : Prédiction sur Ignore Region (Ped en GT)")
+            
+            annot_1 = torch.Tensor([[[900.0000,25.0000,1200.0000,75.0000,12.0]]]).cuda()
+            classification = classification*0
+            for i in true_indexes:
+              classification[0,i,7] = 1
+
+                                      
+            print("Without DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
+
+            print("With DAFL")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
+
+
+
+            print("\nTest 4 : Prédiction parfaite Car (Car en GT BDD, Rien en GT WAY)")
+            
+            if data['dataset']=='BDD':
+              annot_1 = torch.Tensor([[[991.4912,37.74562,1048.5088,66.25438,0.0]]]).cuda()
+            else:
+              annot_1 = torch.empty((1,0,5)).cuda()
+            classification = classification*0
+            for i in true_indexes:
+              classification[0,i,0] = 1
+                                      
+            print("Without DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
+
+            print("With DAFL")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))    
+
+
+
+            print("\nTest 5 : Prédiction parfaite Cyclist (Cyclist en GT WAY, Rien en GT BDD)")
+            
+            if data['dataset']=='WAY':
+              annot_1 = torch.Tensor([[[991.4912,37.74562,1048.5088,66.25438,10.0]]]).cuda()
+            else:
+              annot_1 = torch.empty((1,0,5)).cuda()
+            classification = classification*0
+            for i in true_indexes:
+              classification[0,i,10] = 1
+                                      
+            print("Without DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
+
+            print("With DAFL")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
+
+
+
+            print("\nTest 6 : Fausse Prédiction Car (Rien en GT)")
+            
+            annot_1 = torch.empty((1,0,5)).cuda()
+            classification = classification*0
+            for i in true_indexes:
+              classification[0,i,0] = 1
+                                      
+            print("Without DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
+
+            print("With DAFL")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
+
+
+
+            print("\nTest 7 : Fausse Prédiction Cyclist (Rien en GT)")
+            
+            annot_1 = torch.empty((1,0,5)).cuda()
+            classification = classification*0
+            for i in true_indexes:
+              classification[0,i,10] = 1
+                                      
+            print("Without DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
+
+            print("With DAFL")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
 if __name__ == '__main__':
     main()

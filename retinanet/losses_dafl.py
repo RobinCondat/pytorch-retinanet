@@ -46,7 +46,6 @@ class FocalLoss(nn.Module):
     def forward(self, classifications, regressions, anchors, annotations, dataset,ignore_index=None):
 
         classes_from_other_datasets = [i for i in range(classifications.shape[-1]) if i not in INDEXES_MIX[dataset]]
-        print(classes_from_other_datasets)
         alpha = 0.25
         gamma = 2.0
         batch_size = classifications.shape[0]
@@ -70,9 +69,7 @@ class FocalLoss(nn.Module):
             bbox_annotation = bbox_annotation[bbox_annotation[:, 4] != -1]
             
             # Ignore class from other datasets
-            classification[:,classes_from_other_datasets]=1
-            for index in classes_from_other_datasets:
-              print(torch.unique(classification[:,index]))
+            classification[:,classes_from_other_datasets]=0
 
             classification = torch.clamp(classification, 1e-4, 1.0 - 1e-4)
 
@@ -155,7 +152,7 @@ class FocalLoss(nn.Module):
             else:
                 positive_indices = (torch.ones((num_anchors)) * 0).type(torch.ByteTensor)
                 num_positive_anchors = torch.tensor(0)
-
+           
             if ignore_index is not None:
                 if ignore_indices is not None:
                     targets[ignore_indices, :] = -1
