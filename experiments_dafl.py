@@ -234,6 +234,7 @@ def main(args=None):
             plt.imshow(output_2)
             plt.title("Ground Truth")
             plt.show();
+            """
             print(x,y,h,w)
             print(score)
             print(classe)
@@ -242,14 +243,14 @@ def main(args=None):
             print("Loss Ignore IoU")
             annot_1 = torch.Tensor([[[991.4912,37.74562,1048.5088,66.25438,0.0]]]).cuda()
             class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, ignore_index = 8)
-            print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
-            print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
+            #print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
+            #print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
 
             print("Loss Ignore IoA")
-            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, ignore_index = 8)
-            print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
-            print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
-            """
+            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 8)
+            #print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
+            #print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
+            
 
     
 

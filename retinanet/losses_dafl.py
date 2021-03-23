@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+from retinanet.config_experiment_2 import INDEXES_MIX, VEHICLE_INDEXES
 
 def calc_iou(a, b):
     area = (b[:, 2] - b[:, 0]) * (b[:, 3] - b[:, 1])
@@ -42,7 +43,10 @@ def cal_ioa(a, b):
 class FocalLoss(nn.Module):
     #def __init__(self):
 
-    def forward(self, classifications, regressions, anchors, annotations,ignore_index=None):
+    def forward(self, classifications, regressions, anchors, annotations, dataset,ignore_index=None):
+
+        classes_from_other_datasets = [i for i in range(classifications.shape[-1]) if i not in INDEXES_MIX[dataset]]
+        print(classes_from_other_datasets)
         alpha = 0.25
         gamma = 2.0
         batch_size = classifications.shape[0]
@@ -64,7 +68,12 @@ class FocalLoss(nn.Module):
 
             bbox_annotation = annotations[j, :, :]
             bbox_annotation = bbox_annotation[bbox_annotation[:, 4] != -1]
-            #print("Batch size {}".format(j))
+            
+            # Ignore class from other datasets
+            classification[:,classes_from_other_datasets]=1
+            for index in classes_from_other_datasets:
+              print(torch.unique(classification[:,index]))
+
             classification = torch.clamp(classification, 1e-4, 1.0 - 1e-4)
 
             if bbox_annotation.shape[0] == 0:
@@ -73,11 +82,11 @@ class FocalLoss(nn.Module):
 
                     alpha_factor = 1. - alpha_factor
                     focal_weight = classification
+
                     focal_weight = alpha_factor * torch.pow(focal_weight, gamma)
 
                     bce = -(torch.log(1.0 - classification))
 
-                    # cls_loss = focal_weight * torch.pow(bce, gamma)
                     cls_loss = focal_weight * bce
                     classification_losses.append(cls_loss.sum())
                     regression_losses.append(torch.tensor(0).float().cuda())
@@ -87,11 +96,11 @@ class FocalLoss(nn.Module):
 
                     alpha_factor = 1. - alpha_factor
                     focal_weight = classification
+
                     focal_weight = alpha_factor * torch.pow(focal_weight, gamma)
 
                     bce = -(torch.log(1.0 - classification))
 
-                    # cls_loss = focal_weight * torch.pow(bce, gamma)
                     cls_loss = focal_weight * bce
                     classification_losses.append(cls_loss.sum())
                     regression_losses.append(torch.tensor(0).float())
@@ -103,22 +112,15 @@ class FocalLoss(nn.Module):
                 # On sépare ici les annotations en 2 objets : 
                 # - bbox_annotation (pour tous les objets à détecter) 
                 # - ignore_annotation (pour toutes les régions à ignorer)
-                #print("\nBbox init : {}".format(bbox_annotation.shape))
                 ignore_annotation = bbox_annotation[bbox_annotation[:,4] == ignore_index]
                 bbox_annotation = bbox_annotation[bbox_annotation[:,4] != ignore_index]
-                #print("Ignore : {}".format(ignore_annotation.shape))
-                #print("Bbox after : {}".format(bbox_annotation.shape))
 
             if bbox_annotation.shape[0] != 0:
                 IoU = calc_iou(anchors[0, :, :], bbox_annotation[:, :4]) # num_anchors x num_annotations_to_detect
                 IoU_max, IoU_argmax = torch.max(IoU, dim=1) # num_anchors x 1
-                #print("IoU_max : {}".format(IoU_max.shape))
-                #print("IoU_argmax : {}".format(IoU_argmax.shape))
             else:
                 IoU_max = None
                 IoU_argmax = None
-                #print("IoU_max : {}".format(IoU_max))
-                #print("IoU_argmax : {}".format(IoU_argmax))
             
             if ignore_index is not None:
                 # On calcule ici l'intersection over area : 
@@ -126,13 +128,9 @@ class FocalLoss(nn.Module):
                 if ignore_annotation.shape[0] !=0:
                     IoA = cal_ioa(anchors[0, :, :], ignore_annotation[:, :4]) # num_anchors x num_annotations_to_ignore            
                     IoA_max, IoA_argmax = torch.max(IoA, dim=1) # num_anchors x 1
-                    #print("IoA_max : {}".format(IoA_max.shape))
-                    #print("IoA_argmax : {}".format(IoA_argmax.shape))
                 else:
                     IoA_max = None
                     IoA_argmax = None
-                    #print("IoA_max : {}".format(IoA_max))
-                    #print("IoA_argmax : {}".format(IoA_argmax))
             
             # compute the loss for classification
             targets = torch.ones(classification.shape) * -1
@@ -148,19 +146,15 @@ class FocalLoss(nn.Module):
             if ignore_index is not None:
                 if IoA_max is not None:
                     ignore_indices = torch.ge(IoA_max, 0.5)
-                    #print("Ignore indices : {}".format(ignore_indices.shape))
                 else:
                     ignore_indices = (torch.ones((num_anchors)) * 0).type(torch.ByteTensor)
-                    #print("Ignore indices : {}".format(ignore_indices))
             if IoU_max is not None:
                 positive_indices = torch.ge(IoU_max, 0.5)
                 num_positive_anchors = positive_indices.sum()
-                #print("Positive indices : {}".format(positive_indices.shape))
             
             else:
                 positive_indices = (torch.ones((num_anchors)) * 0).type(torch.ByteTensor)
                 num_positive_anchors = torch.tensor(0)
-                #print("Positive indices : {}".format(positive_indices.shape))
 
             if ignore_index is not None:
                 if ignore_indices is not None:
@@ -169,9 +163,6 @@ class FocalLoss(nn.Module):
             if IoU_argmax is not None:
                 assigned_annotations = bbox_annotation[IoU_argmax, :]
                 targets[positive_indices, :] = 0
-                #print(assigned_annotations.shape)
-                #print(targets.shape)
-                #print(positive_indices.shape)
                 targets[positive_indices, assigned_annotations[positive_indices, 4].long()] = 1
             
             if torch.cuda.is_available():
@@ -181,18 +172,17 @@ class FocalLoss(nn.Module):
 
             alpha_factor = torch.where(torch.eq(targets, 1.), alpha_factor, 1. - alpha_factor)
             focal_weight = torch.where(torch.eq(targets, 1.), 1. - classification, classification)
+            
             focal_weight = alpha_factor * torch.pow(focal_weight, gamma)
 
             bce = -(targets * torch.log(classification) + (1.0 - targets) * torch.log(1.0 - classification))
 
-            # cls_loss = focal_weight * torch.pow(bce, gamma)
             cls_loss = focal_weight * bce
 
             if torch.cuda.is_available():
                 cls_loss = torch.where(torch.ne(targets, -1.0), cls_loss, torch.zeros(cls_loss.shape).cuda())
             else:
                 cls_loss = torch.where(torch.ne(targets, -1.0), cls_loss, torch.zeros(cls_loss.shape))
-            print(torch.ne(targets, -1.0).nonzero(as_tuple=True)[0].shape)
             classification_losses.append(cls_loss.sum()/torch.clamp(num_positive_anchors.float(), min=1.0))
    
             # compute the loss for regression
