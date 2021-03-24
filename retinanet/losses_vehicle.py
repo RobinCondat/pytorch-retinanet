@@ -43,9 +43,9 @@ def cal_ioa(a, b):
 class FocalLoss(nn.Module):
     #def __init__(self):
 
-    def forward(self, classifications, regressions, anchors, annotations, dataset,ignore_index=None):
+    def forward(self, classifications, regressions, anchors, annotations, dataset, ignore_index=None, merge_index=None):
 
-        classes_from_other_datasets = [i for i in range(classifications.shape[-1]) if i not in INDEXES_MIX[dataset]]
+        classes_from_other_datasets = [i for i in range(classifications.shape[-1]+1) if i not in INDEXES_MIX[dataset]]
         alpha = 0.25
         gamma = 2.0
         batch_size = classifications.shape[0]
@@ -59,16 +59,22 @@ class FocalLoss(nn.Module):
         anchor_heights = anchor[:, 3] - anchor[:, 1]
         anchor_ctr_x   = anchor[:, 0] + 0.5 * anchor_widths
         anchor_ctr_y   = anchor[:, 1] + 0.5 * anchor_heights
+        if merge_index is not None:
+          classifications = torch.cat((classifications,torch.zeros((classifications.shape[0],classifications.shape[1],1)).cuda()),2)
         print(classifications.shape)
-
         for j in range(batch_size):
-
             classification = classifications[j, :, :]
             regression = regressions[j, :, :]
 
             bbox_annotation = annotations[j, :, :]
             bbox_annotation = bbox_annotation[bbox_annotation[:, 4] != -1]
             
+            # Merge vehicle detections in vehicle class
+            if merge_index is not None:
+              if merge_index not in classes_from_other_datasets:
+                #print(torch.max(classification[:,VEHICLE_INDEXES], dim=1)[0].shape)
+                classification[:,merge_index] = torch.max(classification[:,VEHICLE_INDEXES], dim=1)[0]
+
             # Ignore class from other datasets
             classification[:,classes_from_other_datasets]=0
 

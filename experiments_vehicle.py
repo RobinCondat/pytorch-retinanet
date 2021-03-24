@@ -6,7 +6,7 @@ import torch
 import torch.optim as optim
 from torchvision import transforms
 
-from retinanet import model_experiment_2 as model
+from retinanet import model_vehicle as model
 from retinanet.dataloader2 import CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, \
     Normalizer
 from torch.utils.data import DataLoader 
@@ -28,8 +28,8 @@ from retinanet.config_experiment_2 import Config
 import time
 import progressbar
 
-from retinanet import losses
-from retinanet import losses_dafl as new_losses
+from retinanet import losses_dafl as losses
+from retinanet import losses_vehicle as new_losses
 
 assert torch.__version__.split('.')[0] == '1'
 import warnings
@@ -95,42 +95,64 @@ def main(args=None):
     print("Num_classes train : {}".format(dataset_train.num_classes()))
     # Create the model
     if C.backbone == 'resnet18':
-        retinanet = model.resnet18(num_classes=dataset_train.num_classes(), pretrained=True, color_mode = C.color_mode, fusion_type=C.fusion_type, step=1, evaluate=False,ignore_class=C.ignore_class,dataset=C.dataset)
+        retinanet = model.resnet18(num_classes=dataset_train.num_classes(), pretrained=True, color_mode = C.color_mode, fusion_type=C.fusion_type, step=1, evaluate=False,ignore_class=C.ignore_class,merge_class=0,dataset=C.dataset)
     elif C.backbone == 'resnet34':
-        retinanet = model.resnet34(num_classes=dataset_train.num_classes(), pretrained=True, color_mode = C.color_mode, fusion_type=C.fusion_type, step=1, evaluate=False,ignore_class=C.ignore_class,dataset=C.dataset)
+        retinanet = model.resnet34(num_classes=dataset_train.num_classes(), pretrained=True, color_mode = C.color_mode, fusion_type=C.fusion_type, step=1, evaluate=False,ignore_class=C.ignore_class,merge_class=0,dataset=C.dataset)
     elif C.backbone == 'resnet50':
-        retinanet = model.resnet50(num_classes=dataset_train.num_classes(), pretrained=True, color_mode = C.color_mode, fusion_type=C.fusion_type, step=1, evaluate=False,ignore_class=C.ignore_class,dataset=C.dataset)
+        retinanet = model.resnet50(num_classes=dataset_train.num_classes(), pretrained=True, color_mode = C.color_mode, fusion_type=C.fusion_type, step=1, evaluate=False,ignore_class=C.ignore_class,merge_class=0,dataset=C.dataset)
     elif C.backbone == 'resnet101':
-        retinanet = model.resnet101(num_classes=dataset_train.num_classes(), pretrained=True, color_mode = C.color_mode, fusion_type=C.fusion_type, step=1, evaluate=False,ignore_class=C.ignore_class,dataset=C.dataset)
+        retinanet = model.resnet101(num_classes=dataset_train.num_classes(), pretrained=True, color_mode = C.color_mode, fusion_type=C.fusion_type, step=1, evaluate=False,ignore_class=C.ignore_class,merge_class=0,dataset=C.dataset)
     elif C.backbone == 'resnet152':
-        retinanet = model.resnet152(num_classes=dataset_train.num_classes(), pretrained=True, color_mode = C.color_mode, fusion_type=C.fusion_type, step=1, evaluate=False,ignore_class=C.ignore_class,dataset=C.dataset)
+        retinanet = model.resnet152(num_classes=dataset_train.num_classes(), pretrained=True, color_mode = C.color_mode, fusion_type=C.fusion_type, step=1, evaluate=False,ignore_class=C.ignore_class,merge_class=0,dataset=C.dataset)
     else:
         raise ValueError('Unsupported model depth, must be one of 18, 34, 50, 101, 152')
-    
+  
+    if C.backbone == 'resnet18':
+        retinanet2 = model.resnet18(num_classes=dataset_train.num_classes(), pretrained=True, color_mode = C.color_mode, fusion_type=C.fusion_type, step=1, evaluate=False,ignore_class=C.ignore_class,merge_class=1,dataset=C.dataset)
+    elif C.backbone == 'resnet34':
+        retinanet2 = model.resnet34(num_classes=dataset_train.num_classes(), pretrained=True, color_mode = C.color_mode, fusion_type=C.fusion_type, step=1, evaluate=False,ignore_class=C.ignore_class,merge_class=1,dataset=C.dataset)
+    elif C.backbone == 'resnet50':
+        retinanet2 = model.resnet50(num_classes=dataset_train.num_classes(), pretrained=True, color_mode = C.color_mode, fusion_type=C.fusion_type, step=1, evaluate=False,ignore_class=C.ignore_class,merge_class=1,dataset=C.dataset)
+    elif C.backbone == 'resnet101':
+        retinanet2 = model.resnet101(num_classes=dataset_train.num_classes(), pretrained=True, color_mode = C.color_mode, fusion_type=C.fusion_type, step=1, evaluate=False,ignore_class=C.ignore_class,merge_class=1,dataset=C.dataset)
+    elif C.backbone == 'resnet152':
+        retinanet2 = model.resnet152(num_classes=dataset_train.num_classes(), pretrained=True, color_mode = C.color_mode, fusion_type=C.fusion_type, step=1, evaluate=False,ignore_class=C.ignore_class,merge_class=1,dataset=C.dataset)
+    else:
+        raise ValueError('Unsupported model depth, must be one of 18, 34, 50, 101, 152')
+
+
     if C.transfer_learning and C.backbone == 'resnet50':
         for weights in C.weights:
             print(os.path.exists(weights))
             retinanet.load_state_dict(torch.load(weights),strict=False)
+            retinanet2.load_state_dict(torch.load(weights),strict=False)
 
     use_gpu = True
 
     if use_gpu:
         if torch.cuda.is_available():
             retinanet = retinanet.cuda()
+            retinanet2 = retinanet2.cuda()
     
     if torch.cuda.is_available():
         retinanet = torch.nn.DataParallel(retinanet).cuda()
+        retinanet2 = torch.nn.DataParallel(retinanet2).cuda()
     else:
         retinanet = torch.nn.DataParallel(retinanet)
+        retinanet2 = torch.nn.DataParallel(retinanet2)
 
     retinanet.training = False
+    retinanet2.training = False
 
     optimizer = optim.Adam(retinanet.parameters(), lr=C.lr)
+    optimizer2 = optim.Adam(retinanet2.parameters(), lr=C.lr)
     #torch.nn.utils.clip_grad_norm_(retinanet.parameters(),0.001)
     #scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=3, verbose=True)
 
     retinanet.train()
     retinanet.module.freeze_bn()
+    retinanet2.train()
+    retinanet2.module.freeze_bn()
     
     dataloaders = {'train':dataloader_train}
 
@@ -171,6 +193,7 @@ def main(args=None):
         prefix = 'val_' if phase=='val' else ''
         
         retinanet.train(phase=='train')
+        retinanet2.train(phase=='train')
                 
         for iter_num,data in enumerate(dataloaders[phase]):
             
@@ -181,8 +204,8 @@ def main(args=None):
                     data['img'] = data['img'].cuda().float()
             optimizer.zero_grad()
             data['annot'] = torch.Tensor([[[0.0000,0.0000,1280.0000,720.0000,8.0]]]).cuda()
-            classification, regression, anchors, annotations = retinanet([data['img'], data['annot']])
-            
+            classification, regression, anchors, annotations = retinanet([data['img'], data['annot'],data['dataset']])
+            classification2, regression2, anchors, annotations = retinanet2([data['img'], data['annot'],data['dataset']])
             if data['dataset']=='BDD':
               true_indexes = [ 8524,  8528,  9982,  9990,  9991,  9992,  9993,  9994,  9999, 10000, 10001, 10002, 10003, 10004, 10008, 10009, 10010, 10011, 10012, 10018, 11476, 11480]
             else:
@@ -201,39 +224,42 @@ def main(args=None):
             annot_1 = torch.Tensor([[[991.4912,37.74562,1048.5088,66.25438,7.0]]]).cuda()
             for i in true_indexes:
               classification[0,i,7] = 1
+              classification2[0,i,7] = 1
 
-            print("Without DAFL")
-            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, ignore_index = 12)
+            print("DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
             print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
             print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
 
-            print("With DAFL")
-            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("DAFL with Vehicle Merge")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification2, regression2, anchors, annot_1, data['dataset'], merge_index=11, ignore_index = 12)
             print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
             print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
             
 
-
+            
 
             print("\nTest 2 : Prédiction fausse (Car/Cyclist en GT aux mêmes coordonnées que la prédiction Ped)")
             
             annot_1 = torch.Tensor([[[991.4912,37.74562,1048.5088,66.25438,7.0]]]).cuda()
             classification = classification*0
+            classification2 = classification2*0
             if data['dataset']=='BDD':
               cls = 0
             else:
               cls = 10
             for i in true_indexes:
               classification[0,i,cls] = 1
+              classification2[0,i,cls] = 1
 
                                       
-            print("Without DAFL")
-            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, ignore_index = 12)
+            print("DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
             print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
             print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
 
-            print("With DAFL")
-            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("DAFL with Vehicle Merge")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification2, regression2, anchors, annot_1, data['dataset'], merge_index=11, ignore_index = 12)
             print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
             print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
 
@@ -243,17 +269,19 @@ def main(args=None):
             
             annot_1 = torch.Tensor([[[900.0000,25.0000,1200.0000,75.0000,12.0]]]).cuda()
             classification = classification*0
+            classification2 = classification2*0
             for i in true_indexes:
               classification[0,i,7] = 1
+              classification2[0,i,7] = 1
 
                                       
-            print("Without DAFL")
-            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, ignore_index = 12)
+            print("DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
             print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
             print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
 
-            print("With DAFL")
-            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("DAFL with Vehicle Merge")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification2, regression2, anchors, annot_1, data['dataset'], merge_index=11, ignore_index = 12)
             print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
             print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
 
@@ -266,16 +294,17 @@ def main(args=None):
             else:
               annot_1 = torch.empty((1,0,5)).cuda()
             classification = classification*0
+            classification2 = classification2*0
             for i in true_indexes:
               classification[0,i,0] = 1
-                                      
-            print("Without DAFL")
-            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, ignore_index = 12)
+              classification[0,i,0] = 1               
+            print("DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
             print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
             print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
 
-            print("With DAFL")
-            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("DAFL with Vehicle Merge")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification2, regression2, anchors, annot_1, data['dataset'], merge_index=11, ignore_index = 12)
             print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
             print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))    
 
@@ -288,35 +317,38 @@ def main(args=None):
             else:
               annot_1 = torch.empty((1,0,5)).cuda()
             classification = classification*0
+            classification2 = classification2*0
             for i in true_indexes:
               classification[0,i,10] = 1
+              classification2[0,i,10] = 1
                                       
-            print("Without DAFL")
-            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, ignore_index = 12)
+            print("DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
             print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
             print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
 
-            print("With DAFL")
-            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("DAFL with Vehicle Merge")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification2, regression2, anchors, annot_1, data['dataset'], merge_index=11, ignore_index = 12)
             print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
             print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
-
 
 
             print("\nTest 6 : Fausse Prédiction Car (Rien en GT)")
             
             annot_1 = torch.empty((1,0,5)).cuda()
             classification = classification*0
+            classification2 = classification2*0
             for i in true_indexes:
               classification[0,i,0] = 1
+              classification2[0,i,0] = 1
                                       
-            print("Without DAFL")
-            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, ignore_index = 12)
+            print("DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
             print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
             print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
 
-            print("With DAFL")
-            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("DAFL with Vehicle Merge")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification2, regression2, anchors, annot_1, data['dataset'], merge_index=11, ignore_index = 12)
             print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
             print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
 
@@ -326,17 +358,21 @@ def main(args=None):
             
             annot_1 = torch.empty((1,0,5)).cuda()
             classification = classification*0
+            classification2 = classification2*0
             for i in true_indexes:
               classification[0,i,10] = 1
+              classification2[0,i,10] = 1
                                       
-            print("Without DAFL")
-            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, ignore_index = 12)
+            print("DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
             print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
             print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
 
-            print("With DAFL")
-            class_1_IoA,reg_1_IoA = focalLoss2(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("DAFL with Vehicle Merge")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification2, regression2, anchors, annot_1, data['dataset'], merge_index=11, ignore_index = 12)
             print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
             print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
+
+            
 if __name__ == '__main__':
     main()
