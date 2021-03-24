@@ -5,7 +5,7 @@ import torch.utils.model_zoo as model_zoo
 from torchvision.ops import nms
 from retinanet.utils import BasicBlock, Bottleneck, BBoxTransform, ClipBoxes
 from retinanet.anchors import Anchors
-from retinanet import new_losses as losses
+from retinanet import losses_dafl as losses
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -335,7 +335,7 @@ class ResNet(nn.Module):
     def forward(self, inputs):
 
         if not self.evaluate:
-            img_batch, annotations = inputs
+            img_batch, annotations,dataset = inputs
         else:
             img_batch = inputs
 
@@ -358,7 +358,7 @@ class ResNet(nn.Module):
         anchors = self.anchors(img_batch)
 
         if not self.evaluate:
-            return self.focalLoss(classification, regression, anchors, annotations, ignore_index = self.ignore_index)
+            return self.focalLoss(classification, regression, anchors, annotations, dataset, ignore_index = self.ignore_index)
         
         else:
             transformed_anchors = self.regressBoxes(anchors, regression)

@@ -193,7 +193,7 @@ def main(args=None):
                 optimizer.zero_grad()
                 #print(data['annot'][:,:,4].size())
                 #print(data['annot'][:,:,4])
-                classification_loss, regression_loss = retinanet([data['img'], data['annot']])
+                classification_loss, regression_loss = retinanet([data['img'], data['annot'],data['dataset']])
                  
                 classification_loss = classification_loss.mean()
                 regression_loss = regression_loss.mean()

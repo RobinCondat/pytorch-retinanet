@@ -19,7 +19,7 @@ class Config:
         
         args = parser_args(args)
         
-        self.ID = "{}_{}_{}".format(args.ID,args.classes,args.lr)
+        self.ID = args.ID
         self.family = args.FAMILY
         self.backbone = args.backbone
         self.transfer_learning = args.transfer_learning
@@ -218,3 +218,9 @@ PREFIXES = {'KIT':['KIT'],
             'WAY':['WAY'],
             'MIX':['BDD','CIT','COA','WAY'],
             'FIN':['CIT']}
+
+INDEXES_MIX = {'BDD':[0,1,2,3,6,7,8,9,12],
+               'CIT':[0,1,2,3,4,5,6,7,8,9,12],
+               'WAY':[7,10,11,12]}
+
+VEHICLE_INDEXES = [0,1,2,3,4,5]
