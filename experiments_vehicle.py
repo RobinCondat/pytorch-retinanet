@@ -287,17 +287,17 @@ def main(args=None):
 
 
 
-            print("\nTest 4 : Prédiction parfaite Car (Car en GT BDD, Rien en GT WAY)")
+            print("\nTest 4 : Prédiction parfaite Rider (Rider en GT BDD, Rien en GT WAY)")
             
             if data['dataset']=='BDD':
-              annot_1 = torch.Tensor([[[991.4912,37.74562,1048.5088,66.25438,0.0]]]).cuda()
+              annot_1 = torch.Tensor([[[991.4912,37.74562,1048.5088,66.25438,8.0]]]).cuda()
             else:
               annot_1 = torch.empty((1,0,5)).cuda()
             classification = classification*0
             classification2 = classification2*0
             for i in true_indexes:
-              classification[0,i,0] = 1
-              classification[0,i,0] = 1               
+              classification[0,i,8] = 1
+              classification2[0,i,8] = 1               
             print("DAFL")
             class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
             print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
@@ -333,14 +333,14 @@ def main(args=None):
             print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
 
 
-            print("\nTest 6 : Fausse Prédiction Car (Rien en GT)")
+            print("\nTest 6 : Fausse Prédiction Rider (Rien en GT)")
             
             annot_1 = torch.empty((1,0,5)).cuda()
             classification = classification*0
             classification2 = classification2*0
             for i in true_indexes:
-              classification[0,i,0] = 1
-              classification2[0,i,0] = 1
+              classification[0,i,8] = 1
+              classification2[0,i,8] = 1
                                       
             print("DAFL")
             class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
@@ -373,6 +373,85 @@ def main(args=None):
             print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
             print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
 
+
+
+            print("\nTest 8 : Bonne prédiction Vehicle (Car en prédiction, Vehicule en GT)")
             
+            annot_1 = torch.Tensor([[[991.4912,37.74562,1048.5088,66.25438,11.0]]]).cuda()
+            classification = classification*0
+            classification2 = classification2*0
+            for i in true_indexes:
+              classification[0,i,0] = 1
+              classification2[0,i,0] = 1
+                                      
+            print("DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
+
+            print("DAFL with Vehicle Merge")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification2, regression2, anchors, annot_1, data['dataset'], merge_index=11, ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
+
+            print("\nTest 9 : Bonne prédiction Vehicle 2 (Caravan en prédiction, Vehicule en GT)")
+            
+            annot_1 = torch.Tensor([[[991.4912,37.74562,1048.5088,66.25438,11.0]]]).cuda()
+            classification = classification*0
+            classification2 = classification2*0
+            for i in true_indexes:
+              classification[0,i,5] = 1
+              classification2[0,i,5] = 1
+                                      
+            print("DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
+
+            print("DAFL with Vehicle Merge")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification2, regression2, anchors, annot_1, data['dataset'], merge_index=11, ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
+
+
+            print("\nTest 10 : Mauvaise prédiction Vehicle (Cyclist en prédiction, Vehicule en GT)")
+            
+            annot_1 = torch.Tensor([[[991.4912,37.74562,1048.5088,66.25438,11.0]]]).cuda()
+            classification = classification*0
+            classification2 = classification2*0
+            for i in true_indexes:
+              classification[0,i,10] = 1
+              classification2[0,i,10] = 1
+                                      
+            print("DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
+
+            print("DAFL with Vehicle Merge")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification2, regression2, anchors, annot_1, data['dataset'], merge_index=11, ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
+
+            print("\nTest 11 : Mauvaise prédiction Vehicle 2 (Car en prédiction, Rien en GT)")
+            
+            annot_1 = torch.empty((1,0,5)).cuda()
+            classification = classification*0
+            classification2 = classification2*0
+            for i in true_indexes:
+              classification[0,i,0] = 1
+              classification2[0,i,0] = 1
+                                      
+            print("DAFL")
+            class_1_IoU,reg_1_IoU = focalLoss(classification, regression, anchors, annot_1, data['dataset'], ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoU.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoU.cpu().numpy()[0]))
+
+            print("DAFL with Vehicle Merge")
+            class_1_IoA,reg_1_IoA = focalLoss2(classification2, regression2, anchors, annot_1, data['dataset'], merge_index=11, ignore_index = 12)
+            print("Class loss : {}".format(class_1_IoA.cpu().numpy()[0]))
+            print("Reg loss : {}".format(reg_1_IoA.cpu().numpy()[0]))
+
+
 if __name__ == '__main__':
     main()
